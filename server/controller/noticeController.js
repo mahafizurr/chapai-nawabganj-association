@@ -1,34 +1,26 @@
-const multer = require("multer");
-const path = require("path");
-const addNotice = require("../model/noticeModel");
+const express = require("express");
+const router = express.Router();
+const Notice = require("../models/noticeModel");
+const uploadPlace = require("../upload");
 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "notices/");
-  },
-  filename: function (req, file, cb) {
-    const extension = path.extname(file.originalname);
-    const filename = Date.now() + extension; // Rename the file with a timestamp
-    cb(null, filename);
-  },
+router.post("/noticeupload", uploadPlace, async (req, res) => {
+  const newNotice = await Notice(req.file);
+  const savedNotice = await newNotice.save();
+  if (!savedNotice) {
+    res.status(401).json("Notice not sent to database");
+  } else {
+    res.status(201).json(savedNotice);
+  }
 });
 
-const upload = multer({ storage });
+router.get("/notices", async (req, res) => {
+  const newNotice = await Notice.find({});
 
-exports.upload = upload.single("file");
-
-exports.createFile = async (req, res) => {
-  const file = req.file ? req.file.filename : null; // Check if a file was uploaded
-
-  try {
-    const fileCreate = new addNotice({
-      file,
-    });
-
-    await fileCreate.save(); // Save the user information to the database
-
-    res.status(201).json({ message: "User created successfully" });
-  } catch (error) {
-    res.status(500).json({ message: "User creation failed" });
+  if (!newNotice) {
+    res.status(401).send("Notice not come from database");
+  } else {
+    res.status(201).send(newNotice);
   }
-};
+});
+
+module.exports = router;
